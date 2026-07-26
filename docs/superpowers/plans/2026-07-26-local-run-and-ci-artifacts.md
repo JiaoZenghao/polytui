@@ -52,10 +52,12 @@ Create `scripts/test-run-targets.sh`:
 #!/bin/sh
 set -eu
 
-expected="$(cat VERSION)"
+version="$(cat VERSION)"
 
 check_target() {
 	target="$1"
+	language="$2"
+	expected="polytui $version ($language)"
 	output="$(make --no-print-directory "$target" ARGS="--version")"
 
 	if [ "$output" != "$expected" ]; then
@@ -64,12 +66,12 @@ check_target() {
 	fi
 }
 
-check_target run-go
-check_target run-rust
-check_target run-typescript
-check_target run-python
+check_target run-go go
+check_target run-rust rust
+check_target run-typescript typescript
+check_target run-python python
 
-printf '%s\n' "all local run targets report $expected"
+printf '%s\n' "all local run targets report language-specific versions based on $version"
 ```
 
 Make it executable:
@@ -124,7 +126,9 @@ make test
 ```
 
 Expected: the black-box test prints
-`all local run targets report 0.1.0-dev.0`, and the full suite exits 0.
+`all local run targets report language-specific versions based on 0.1.0-dev.0`,
+and the full suite exits 0. Each target preserves the established full version
+contract: `polytui 0.1.0-dev.0 (<language>)`.
 
 - [ ] **Step 5: Commit the local-run contract**
 
@@ -397,7 +401,8 @@ Expected:
 
 - contract validation succeeds;
 - Go, Rust, TypeScript, and Python tests pass;
-- all four local run targets print `0.1.0-dev.0`;
+- all four local run targets preserve the full version text
+  `polytui 0.1.0-dev.0 (<language>)`;
 - artifact policy validation succeeds;
 - only the intended README change remains uncommitted before the final commit;
 - local `.pnpm-store/` and `AGENTS.md` remain untracked and are not staged.
