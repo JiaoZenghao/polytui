@@ -1,15 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/JiaoZenghao/polytui/implementations/go/internal/cli"
+	"github.com/JiaoZenghao/polytui/implementations/go/internal/tui"
 )
 
 func main() {
-	if err := cli.NewRootCommand().Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	runner := tui.NewRunner(os.Stdin, os.Stdout)
+	os.Exit(cli.Execute(os.Args[1:], os.Stdout, os.Stderr, runner.Run))
 }
