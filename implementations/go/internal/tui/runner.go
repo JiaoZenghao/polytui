@@ -10,13 +10,20 @@ import (
 
 var ErrNotTTY = errors.New("interactive mode requires a TTY")
 
+type programSpec struct {
+	model   tea.Model
+	options []tea.ProgramOption
+}
+
 type ProgramRunner func(tea.Model, ...tea.ProgramOption) (tea.Model, error)
+type programFactory func(programSpec) (tea.Model, error)
 
 type Runner struct {
 	stdin      *os.File
 	stdout     *os.File
 	isTerminal func(int) bool
 	runProgram ProgramRunner
+	runSpec    programFactory
 }
 
 func NewRunner(stdin, stdout *os.File) Runner {
@@ -35,10 +42,17 @@ func (runner Runner) Run() error {
 		!runner.isTerminal(int(runner.stdout.Fd())) {
 		return ErrNotTTY
 	}
-	_, err := runner.runProgram(
-		newModel(),
-		tea.WithInput(runner.stdin),
-		tea.WithOutput(runner.stdout),
-	)
+	spec := programSpec{
+		model: newModel(),
+		options: []tea.ProgramOption{
+			tea.WithInput(runner.stdin),
+			tea.WithOutput(runner.stdout),
+		},
+	}
+	if runner.runSpec != nil {
+		_, err := runner.runSpec(spec)
+		return err
+	}
+	_, err := runner.runProgram(spec.model, spec.options...)
 	return err
 }
