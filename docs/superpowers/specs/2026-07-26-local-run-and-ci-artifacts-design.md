@@ -63,6 +63,13 @@ extract that archive into a temporary directory, verify that `polytui` remains
 executable, and run `polytui --version`. Uploading the tar archive instead of
 the raw binary preserves the executable mode inside GitHub's ZIP artifact.
 
+Executable mode does not imply Apple Developer ID signing or notarization.
+M1 artifacts remain unsigned, so Gatekeeper may require the user to approve a
+trusted download through **System Settings > Privacy & Security > Open
+Anyway**. The README will state this limitation. Automated signing and
+notarization require Apple Developer credentials and belong to a separate
+distribution milestone.
+
 Artifact names will identify the project, language, macOS, and runner
 architecture where relevant. GitHub Actions will perform the final artifact
 archive operation.
