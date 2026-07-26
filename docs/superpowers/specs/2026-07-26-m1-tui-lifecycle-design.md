@@ -322,7 +322,11 @@ The slice is complete when:
 - all four implementations exit successfully through both `Ctrl+C` and
   `Ctrl+D`;
 - all handled exits restore terminal state and preserve the startup view;
-- all four non-TTY invocations emit the exact diagnostic and exit `2`;
+- all four direct application-entry non-TTY invocations exit `2`, write empty
+  `stdout`, and write only the exact newline-terminated diagnostic to `stderr`;
+- all four public Make non-TTY invocations exit `2`, write empty `stdout`, and
+  contain the exact complete diagnostic line exactly once on `stderr`, while
+  additional wrapper `stderr` is permitted;
 - `--version` and `--help` remain non-interactive and successful;
 - shared contracts, language tests, non-TTY tests, and eight PTY scenarios pass
   locally and in GitHub Actions;

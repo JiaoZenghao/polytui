@@ -1130,10 +1130,15 @@ grep_status=$?
 set -e
 test "$grep_status" -eq 0
 test "$diagnostic_count" -eq 1
+last_stderr_byte="$(od -An -t x1 "$stderr_file" | awk '{ last = $NF } END { print last }')"
+test "$last_stderr_byte" = 0a
 ```
 
 Do not require the whole `stderr` file to match: Go's `go run` and GNU Make
-may add wrapper diagnostics.
+may add wrapper diagnostics. `grep -Fxc` proves the diagnostic is a complete
+line and occurs once. If that line is followed by wrapper output, its line
+separator already proves the diagnostic newline; if it is the final line, the
+`od`/`awk` assertion proves the complete `stderr` stream ends in byte `0a`.
 
 In a third loop, invoke each public target with `ARGS="--version"` under the
 same redirected streams. Require status `0`, empty `stderr`, and the existing
