@@ -68,7 +68,9 @@ private. Do not create the remote repository or push without that choice.
 ### TypeScript
 
 - `implementations/typescript/package.json` and `pnpm-lock.yaml` — independent pnpm project.
-- `implementations/typescript/tsconfig.json` — Node ESM TypeScript build.
+- `implementations/typescript/tsconfig.json` — Node ESM production build.
+- `implementations/typescript/tsconfig.test.json` — no-emit source and test type checking.
+- `implementations/typescript/vitest.config.ts` — source-test discovery boundary.
 - `implementations/typescript/src/build-info.ts` — TypeScript version identity.
 - `implementations/typescript/src/cli.ts` — Commander program factory.
 - `implementations/typescript/src/index.ts` — executable entry point.
@@ -554,6 +556,8 @@ git commit -m "feat(rust): add polytui CLI entry point"
 - Create: `implementations/typescript/package.json`
 - Create: `implementations/typescript/pnpm-lock.yaml`
 - Create: `implementations/typescript/tsconfig.json`
+- Create: `implementations/typescript/tsconfig.test.json`
+- Create: `implementations/typescript/vitest.config.ts`
 - Create: `implementations/typescript/src/build-info.ts`
 - Create: `implementations/typescript/src/cli.ts`
 - Create: `implementations/typescript/src/index.ts`
@@ -574,13 +578,13 @@ Create `implementations/typescript/package.json`:
   "private": true,
   "type": "module",
   "bin": {
-    "polytui": "./dist/src/index.js"
+    "polytui": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json"
   },
   "engines": {
     "node": ">=24.15.0"
@@ -608,19 +612,47 @@ Create `implementations/typescript/tsconfig.json`:
     "target": "ES2024",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": ".",
+    "rootDir": "src",
     "outDir": "dist",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
+    "types": ["node"],
     "esModuleInterop": true,
     "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts"]
+}
+```
+
+- [ ] **Step 3: Add test-only TypeScript and Vitest configuration**
+
+Create `implementations/typescript/tsconfig.test.json`:
+
+```json
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }
 ```
 
-- [ ] **Step 3: Write the failing TypeScript CLI test**
+Create `implementations/typescript/vitest.config.ts`:
+
+```ts
+import {defineConfig} from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    include: ['test/**/*.test.ts'],
+  },
+});
+```
+
+- [ ] **Step 4: Write the failing TypeScript CLI test**
 
 Create `implementations/typescript/test/cli.test.ts`:
 
@@ -638,7 +670,7 @@ describe('createProgram', () => {
 });
 ```
 
-- [ ] **Step 4: Run the TypeScript test to verify it fails**
+- [ ] **Step 5: Run the TypeScript test to verify it fails**
 
 Run:
 
@@ -649,7 +681,7 @@ pnpm test
 
 Expected: FAIL because `src/cli.ts` does not exist.
 
-- [ ] **Step 5: Add TypeScript build identity**
+- [ ] **Step 6: Add TypeScript build identity**
 
 Create `implementations/typescript/src/build-info.ts`:
 
@@ -659,7 +691,7 @@ export const language = 'typescript';
 export const versionText = `polytui ${version} (${language})`;
 ```
 
-- [ ] **Step 6: Implement the Commander program**
+- [ ] **Step 7: Implement the Commander program**
 
 Create `implementations/typescript/src/cli.ts`:
 
@@ -676,7 +708,7 @@ export function createProgram(): Command {
 }
 ```
 
-- [ ] **Step 7: Add the TypeScript executable**
+- [ ] **Step 8: Add the TypeScript executable**
 
 Create `implementations/typescript/src/index.ts`:
 
@@ -688,7 +720,7 @@ import {createProgram} from './cli.js';
 await createProgram().parseAsync(process.argv);
 ```
 
-- [ ] **Step 8: Run TypeScript tests and build**
+- [ ] **Step 9: Run TypeScript tests and build**
 
 Run:
 
@@ -701,13 +733,13 @@ pnpm run build
 
 Expected: all commands exit `0`.
 
-- [ ] **Step 9: Verify the TypeScript CLI**
+- [ ] **Step 10: Verify the TypeScript CLI**
 
 Run:
 
 ```bash
 cd implementations/typescript
-pnpm run dev -- --version
+pnpm run dev --version
 ```
 
 Expected:
@@ -716,7 +748,7 @@ Expected:
 polytui 0.1.0-dev.0 (typescript)
 ```
 
-- [ ] **Step 10: Commit the TypeScript entry point**
+- [ ] **Step 11: Commit the TypeScript entry point**
 
 ```bash
 git add implementations/typescript
