@@ -10,6 +10,7 @@
 .idea/
 .vscode/
 .worktrees/
+/artifacts/
 
 # Language build artifacts
 node_modules/
