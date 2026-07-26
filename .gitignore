@@ -1,0 +1,20 @@
+.superpowers/
+
+# macOS
+.DS_Store
+
+# Local environment and editor state
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+
+# Language build artifacts
+node_modules/
+dist/
+target/
+.venv/
+__pycache__/
+*.py[cod]
+
