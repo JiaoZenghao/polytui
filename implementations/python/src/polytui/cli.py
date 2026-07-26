@@ -3,6 +3,7 @@ from typing import Annotated
 import typer
 
 from polytui.build_info import VERSION_TEXT
+from polytui.terminal import run_interactive
 
 app = typer.Typer(
     add_completion=False,
@@ -30,3 +31,6 @@ def main(
     ] = False,
 ) -> None:
     del version
+    result = run_interactive()
+    if result:
+        raise typer.Exit(code=result)
