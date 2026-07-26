@@ -57,11 +57,13 @@ CI will stage outputs under language-specific directories before upload. The
 staging layout prevents one language from overwriting another and makes missing
 files a clear build failure.
 
-Go and Rust will use one shared native-artifact build script. The script will
-build the selected implementation, create an architecture-qualified `tar.gz`,
-extract that archive into a temporary directory, verify that `polytui` remains
-executable, and run `polytui --version`. Uploading the tar archive instead of
-the raw binary preserves the executable mode inside GitHub's ZIP artifact.
+Go and Rust will use one shared native-artifact build script. The
+`build-native-artifact.sh` script will build the selected implementation and
+create an architecture-qualified `tar.gz`. The companion
+`test-native-artifact-archive.sh` script will extract that archive into a
+temporary directory, verify that `polytui` remains executable, and run
+`polytui --version`. Uploading the tar archive instead of the raw binary
+preserves the executable mode inside GitHub's ZIP artifact.
 
 Executable mode does not imply Apple Developer ID signing or notarization.
 M1 artifacts remain unsigned, so Gatekeeper may require the user to approve a
