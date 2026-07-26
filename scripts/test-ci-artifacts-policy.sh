@@ -89,13 +89,25 @@ make_duplicate_upload() {
 	' "$base_workflow" >"$output"
 }
 
-make_continue_on_error() {
+make_step_continue_on_error() {
 	output="$1"
 
 	awk '
 		{ print }
 		$0 == "      - name: Upload Go artifact" {
 			print "        continue-on-error: true"
+		}
+	' "$base_workflow" >"$output"
+}
+
+make_job_continue_on_error() {
+	output="$1"
+	job="$2"
+
+	awk -v job="$job" '
+		{ print }
+		$0 == "  " job ":" {
+			print "    continue-on-error: true"
 		}
 	' "$base_workflow" >"$output"
 }
@@ -150,9 +162,33 @@ make_unnamed_upload "$tmp_dir/unnamed.yml"
 expect_rejected unnamed "$tmp_dir/unnamed.yml" \
 	"artifact upload steps: expected exactly 4 uploads, found 5"
 
-make_continue_on_error "$tmp_dir/continue-on-error.yml"
-expect_rejected continue-on-error "$tmp_dir/continue-on-error.yml" \
+make_step_continue_on_error "$tmp_dir/step-continue-on-error.yml"
+expect_rejected step-continue-on-error "$tmp_dir/step-continue-on-error.yml" \
 	"test-go-macos / Upload Go artifact: continue-on-error is not allowed"
+
+make_job_continue_on_error "$tmp_dir/go-job-continue-on-error.yml" \
+	test-go-macos
+expect_rejected go-job-continue-on-error \
+	"$tmp_dir/go-job-continue-on-error.yml" \
+	"test-go-macos: job-level continue-on-error is not allowed"
+
+make_job_continue_on_error "$tmp_dir/rust-job-continue-on-error.yml" \
+	test-rust-macos
+expect_rejected rust-job-continue-on-error \
+	"$tmp_dir/rust-job-continue-on-error.yml" \
+	"test-rust-macos: job-level continue-on-error is not allowed"
+
+make_job_continue_on_error "$tmp_dir/typescript-job-continue-on-error.yml" \
+	test-typescript-macos
+expect_rejected typescript-job-continue-on-error \
+	"$tmp_dir/typescript-job-continue-on-error.yml" \
+	"test-typescript-macos: job-level continue-on-error is not allowed"
+
+make_job_continue_on_error "$tmp_dir/python-job-continue-on-error.yml" \
+	test-python-macos-uv
+expect_rejected python-job-continue-on-error \
+	"$tmp_dir/python-job-continue-on-error.yml" \
+	"test-python-macos-uv: job-level continue-on-error is not allowed"
 
 make_wrong_path "$tmp_dir/wrong-path.yml"
 expect_rejected wrong-path "$tmp_dir/wrong-path.yml" \

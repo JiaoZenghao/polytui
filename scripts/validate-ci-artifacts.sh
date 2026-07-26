@@ -111,7 +111,20 @@ assert_upload_pairs() {
 	fi
 }
 
-assert_no_continue_on_error() {
+assert_no_job_continue_on_error() {
+	job="$1"
+	block="$(job_block "$job")"
+	actual="$(printf '%s\n' "$block" |
+		grep -Ec '^    continue-on-error[[:space:]]*:' || true)"
+
+	if [ "$actual" -ne 0 ]; then
+		printf '%s: job-level continue-on-error is not allowed\n' \
+			"$job" >&2
+		exit 1
+	fi
+}
+
+assert_no_step_continue_on_error() {
 	job="$1"
 	step="$2"
 	block="$(step_block "$job" "$step")"
@@ -130,7 +143,8 @@ assert_upload() {
 	step="$2"
 	name="$3"
 	path="$4"
-	assert_no_continue_on_error "$job" "$step"
+	assert_no_job_continue_on_error "$job"
+	assert_no_step_continue_on_error "$job" "$step"
 	assert_step_line "$job" "$step" "        if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
 	assert_step_line "$job" "$step" "        uses: actions/upload-artifact@v7"
 	assert_step_line "$job" "$step" "          name: $name"
