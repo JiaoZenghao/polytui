@@ -18,6 +18,7 @@ jobs:
         with:
           version: "0.8.9"
       - run: ./scripts/validate-contracts.sh
+      - run: ./scripts/validate-ci-artifacts.sh
 
   test-go-macos:
     runs-on: macos-latest
@@ -155,3 +156,4 @@ jobs:
       - run: uv sync --frozen
         working-directory: implementations/python
       - run: ./scripts/check-versions.sh
+      - run: ./scripts/test-run-targets.sh
