@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-workflow=".github/workflows/ci.yml"
+workflow="${CI_WORKFLOW_PATH:-.github/workflows/ci.yml}"
 
 job_block() {
 	job="$1"
@@ -36,8 +36,23 @@ upload_pairs() {
 				sub(/^      - name: /, "", step)
 			}
 		}
-		$0 ~ /^[[:space:]]*(- )?uses:[[:space:]]+actions\/upload-artifact@v7([[:space:]]|$)/ {
-			print job " / " step
+		/^[[:space:]]*(- )?uses:[[:space:]]+/ {
+			value = $0
+			sub(/^[[:space:]]*(- )?uses:[[:space:]]+/, "", value)
+			quote = substr(value, 1, 1)
+			if (quote == "\"" || quote == sprintf("%c", 39)) {
+				value = substr(value, 2)
+				closing_quote = index(value, quote)
+				if (closing_quote > 0) {
+					value = substr(value, 1, closing_quote - 1)
+				}
+			} else {
+				sub(/[[:space:]]+#.*$/, "", value)
+				sub(/[[:space:]]+$/, "", value)
+			}
+			if (value ~ /^actions\/upload-artifact@/) {
+				print job " / " step
+			}
 		}
 	' "$workflow"
 }
@@ -128,6 +143,7 @@ assert_upload_pairs
 
 assert_job_line validate-contracts "      - run: ./scripts/validate-contracts.sh"
 assert_job_line validate-contracts "      - run: ./scripts/validate-ci-artifacts.sh"
+assert_job_line validate-contracts "      - run: ./scripts/test-ci-artifacts-policy.sh"
 assert_job_line blackbox-parity-macos "      - run: ./scripts/check-versions.sh"
 assert_job_line blackbox-parity-macos "      - run: ./scripts/test-run-targets.sh"
 

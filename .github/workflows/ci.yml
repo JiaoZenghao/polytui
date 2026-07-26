@@ -19,6 +19,7 @@ jobs:
           version: "0.8.9"
       - run: ./scripts/validate-contracts.sh
       - run: ./scripts/validate-ci-artifacts.sh
+      - run: ./scripts/test-ci-artifacts-policy.sh
 
   test-go-macos:
     runs-on: macos-latest
