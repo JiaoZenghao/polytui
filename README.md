@@ -28,11 +28,32 @@ make test
 ## Run each implementation
 
 ```sh
-cd implementations/go && go run ./cmd/polytui --version
-cargo run --quiet --manifest-path implementations/rust/Cargo.toml -- --version
-pnpm --dir implementations/typescript exec tsx src/index.ts --version
-uv run --project implementations/python polytui --version
+make run-go ARGS="--version"
+make run-rust ARGS="--version"
+make run-typescript ARGS="--version"
+make run-python ARGS="--version"
 ```
+
+Omit `ARGS` to run the CLI without arguments. Before the first TypeScript run,
+install its locked dependencies with:
+
+```sh
+pnpm --dir implementations/typescript install --frozen-lockfile
+```
+
+## Download CI artifacts
+
+Successful pushes to `main` publish four artifacts from the macOS CI workflow:
+
+- `polytui-go-macos-<architecture>`
+- `polytui-rust-macos-<architecture>`
+- `polytui-typescript`
+- `polytui-python`
+
+Open the successful workflow run on the repository's **Actions** tab and
+download the artifact from its **Artifacts** section. Artifacts are retained
+for 30 days. Pull request runs build and test the projects but do not upload
+artifacts.
 
 The architecture and approved scope are documented under
 `docs/superpowers/specs/`.
