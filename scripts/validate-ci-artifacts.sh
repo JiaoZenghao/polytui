@@ -22,6 +22,26 @@ step_block() {
 	'
 }
 
+upload_pairs() {
+	awk '
+		/^  [[:alnum:]_-]+:$/ {
+			job = $0
+			sub(/^  /, "", job)
+			sub(/:$/, "", job)
+		}
+		/^      - / {
+			step = "<unnamed>"
+			if ($0 ~ /^      - name: /) {
+				step = $0
+				sub(/^      - name: /, "", step)
+			}
+		}
+		$0 ~ /^[[:space:]]*(- )?uses:[[:space:]]+actions\/upload-artifact@v7([[:space:]]|$)/ {
+			print job " / " step
+		}
+	' "$workflow"
+}
+
 assert_exact_line() {
 	scope="$1"
 	content="$2"
@@ -56,11 +76,46 @@ assert_step_line() {
 	assert_exact_line "$job / $step" "$block" "$line"
 }
 
+assert_upload_pairs() {
+	pairs="$(upload_pairs)"
+
+	assert_exact_line "artifact upload steps" "$pairs" \
+		"test-go-macos / Upload Go artifact"
+	assert_exact_line "artifact upload steps" "$pairs" \
+		"test-rust-macos / Upload Rust artifact"
+	assert_exact_line "artifact upload steps" "$pairs" \
+		"test-typescript-macos / Upload TypeScript artifact"
+	assert_exact_line "artifact upload steps" "$pairs" \
+		"test-python-macos-uv / Upload Python artifact"
+
+	actual="$(printf '%s\n' "$pairs" | grep -c . || true)"
+	if [ "$actual" -ne 4 ]; then
+		printf 'artifact upload steps: expected exactly 4 uploads, found %s\n' \
+			"$actual" >&2
+		exit 1
+	fi
+}
+
+assert_no_continue_on_error() {
+	job="$1"
+	step="$2"
+	block="$(step_block "$job" "$step")"
+	actual="$(printf '%s\n' "$block" |
+		grep -Ec '^[[:space:]]*continue-on-error[[:space:]]*:' || true)"
+
+	if [ "$actual" -ne 0 ]; then
+		printf '%s / %s: continue-on-error is not allowed\n' \
+			"$job" "$step" >&2
+		exit 1
+	fi
+}
+
 assert_upload() {
 	job="$1"
 	step="$2"
 	name="$3"
 	path="$4"
+	assert_no_continue_on_error "$job" "$step"
 	assert_step_line "$job" "$step" "        if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
 	assert_step_line "$job" "$step" "        uses: actions/upload-artifact@v7"
 	assert_step_line "$job" "$step" "          name: $name"
@@ -68,6 +123,8 @@ assert_upload() {
 	assert_step_line "$job" "$step" "          retention-days: 30"
 	assert_step_line "$job" "$step" "          if-no-files-found: error"
 }
+
+assert_upload_pairs
 
 assert_job_line validate-contracts "      - run: ./scripts/validate-contracts.sh"
 assert_job_line validate-contracts "      - run: ./scripts/validate-ci-artifacts.sh"
