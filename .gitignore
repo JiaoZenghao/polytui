@@ -9,6 +9,7 @@
 !.env.example
 .idea/
 .vscode/
+.worktrees/
 
 # Language build artifacts
 node_modules/
@@ -17,4 +18,3 @@ target/
 .venv/
 __pycache__/
 *.py[cod]
-
