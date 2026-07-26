@@ -1,0 +1,10 @@
+{
+  "format_version": 1,
+  "id": "hello",
+  "prompt": "hello",
+  "chunks": [
+    "Hello",
+    " from",
+    " polytui."
+  ]
+}
