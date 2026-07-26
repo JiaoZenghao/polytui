@@ -6,22 +6,12 @@ from polytui.cli import app
 runner = CliRunner()
 
 
-def test_no_args_runs_interactive_and_propagates_exit_code(
-    monkeypatch,
-) -> None:
-    calls = 0
-
-    def run_interactive() -> int:
-        nonlocal calls
-        calls += 1
-        return 1
-
-    monkeypatch.setattr(polytui.cli, "run_interactive", run_interactive)
-
+def test_no_args_uses_cli_runner_streams_for_non_tty_diagnostic() -> None:
     result = runner.invoke(app)
 
-    assert result.exit_code == 1
-    assert calls == 1
+    assert result.exit_code == 2
+    assert result.stdout == ""
+    assert result.stderr == "polytui: interactive mode requires a TTY\n"
 
 
 def test_version_flag_uses_shared_version() -> None:
