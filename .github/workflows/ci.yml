@@ -29,17 +29,14 @@ jobs:
           cache-dependency-path: implementations/go/go.sum
       - run: go test ./...
         working-directory: implementations/go
-      - name: Build Go artifact
-        run: |
-          mkdir -p ../../artifacts/go
-          go build -trimpath -o ../../artifacts/go/polytui ./cmd/polytui
-        working-directory: implementations/go
+      - name: Build and verify Go artifact
+        run: ./scripts/test-native-artifact-archive.sh go "${{ runner.arch }}"
       - name: Upload Go artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: polytui-go-macos-${{ runner.arch }}
-          path: artifacts/go/polytui
+          path: artifacts/go/polytui-go-macos-${{ runner.arch }}.tar.gz
           retention-days: 30
           if-no-files-found: error
 
@@ -55,18 +52,14 @@ jobs:
         working-directory: implementations/rust
       - run: cargo test --locked
         working-directory: implementations/rust
-      - name: Build Rust artifact
-        run: |
-          cargo build --release --locked
-          mkdir -p ../../artifacts/rust
-          cp target/release/polytui ../../artifacts/rust/polytui
-        working-directory: implementations/rust
+      - name: Build and verify Rust artifact
+        run: ./scripts/test-native-artifact-archive.sh rust "${{ runner.arch }}"
       - name: Upload Rust artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: polytui-rust-macos-${{ runner.arch }}
-          path: artifacts/rust/polytui
+          path: artifacts/rust/polytui-rust-macos-${{ runner.arch }}.tar.gz
           retention-days: 30
           if-no-files-found: error
 
