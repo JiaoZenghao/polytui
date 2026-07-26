@@ -224,14 +224,28 @@ bytes.
 
 ### Shared Non-TTY Black-Box Test
 
-Run all four public root Make targets without a PTY and verify:
+The test suite has two deliberately separate non-TTY boundaries. The
+application-entry boundary is the strict contract boundary: build the Go
+binary once into the test's temporary directory, then launch it directly; run
+Rust with `cargo run --quiet --manifest-path implementations/rust/Cargo.toml
+--`, TypeScript with `pnpm --dir implementations/typescript exec tsx
+src/index.ts`, and Python with `uv run --project implementations/python
+polytui`. Do not use Make for these four launches. Each application entry must
+exit `2`, write an empty `stdout`, and write `stderr` consisting of exactly one
+newline-terminated line:
 
-- status `2`;
-- empty `stdout`;
-- the exact shared diagnostic on `stderr`.
+```text
+polytui: interactive mode requires a TTY
+```
 
-Run all four targets with `ARGS="--version"` in the same non-TTY environment
-and retain the existing successful version checks.
+The public-Make boundary separately runs all four `make run-<language>`
+targets without a PTY. It requires status `2`, empty `stdout`, and that the
+shared diagnostic occurs exactly once on `stderr`; additional wrapper output
+from `go run` or GNU Make is permitted. This boundary verifies the public
+targets without incorrectly treating wrapper output as application output.
+
+Run all four public targets with `ARGS="--version"` in the same non-TTY
+environment and retain the existing successful version checks.
 
 ### macOS PTY Lifecycle Test
 
@@ -239,11 +253,15 @@ A shared uv-executed Python harness uses the standard-library PTY and terminal
 modules to launch each public Make target. For every language and for both
 exit keys, it:
 
-1. records the pseudo-terminal attributes;
-2. starts the implementation;
+1. opens a master/slave PTY pair, records the slave attributes, and sets its
+   real window size to `80x24` with `TIOCSWINSZ` before launch;
+2. starts the public Make target with the slave attached to all standard
+   streams, while also setting `TERM=xterm-256color`, `COLUMNS=80`, and
+   `LINES=24`;
 3. waits for the language banner and exit hint;
 4. sends the corresponding control byte;
-5. requires process status `0`;
+5. reaps the child with `Popen.wait()` and requires status `0` (a
+   `kill(pid, 0)` liveness probe is not an exit check and must not be used);
 6. compares terminal attributes after exit;
 7. normalizes captured output and confirms the startup view remains present.
 

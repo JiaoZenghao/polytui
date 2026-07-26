@@ -1043,9 +1043,12 @@ git commit -m "feat(python): add inline TUI lifecycle"
 - Modify: `scripts/test-ci-artifacts-policy.sh`
 
 **Interfaces:**
-- Consumes: all four public `make run-<language>` targets.
+- Consumes: four direct application-entry commands and all four public
+  `make run-<language>` targets.
 - Produces: `make test-tui-non-tty` and `make test-tui-lifecycle`.
-- Enforces: 4 non-TTY launches, 4 non-TTY version bypasses, and 8 PTY exit scenarios.
+- Enforces: 4 exact application-entry non-TTY contracts, 4 public Make
+  wrapper non-TTY contracts, 4 public-Make version bypasses, and 8 public-Make
+  PTY exit scenarios.
 
 - [ ] **Step 1: Add failing root targets**
 
@@ -1073,23 +1076,57 @@ Expected: both fail because their scripts do not exist.
 - [ ] **Step 3: Implement the non-TTY shell test**
 
 Create an executable POSIX shell script that uses `mktemp -d` and an exit trap.
-For each `go`, `rust`, `typescript`, and `python`:
+Build the Go application into that temporary directory before the test loop;
+this is the only build wrapper permitted for the strict application-entry
+checks:
+
+```sh
+(cd implementations/go && go build -o "$tmp_dir/polytui-go" ./cmd/polytui)
+```
+
+Define a POSIX-shell dispatcher for the four direct application commands,
+without Make:
+
+```sh
+run_application_entry() {
+	case "$1" in
+	go) "$tmp_dir/polytui-go" ;;
+	rust) cargo run --quiet --manifest-path implementations/rust/Cargo.toml -- ;;
+	typescript) pnpm --dir implementations/typescript exec tsx src/index.ts ;;
+	python) uv run --project implementations/python polytui ;;
+	esac
+}
+```
+
+For each direct command, run it with `/dev/null` as input and separate captured
+standard streams. Require the application contract exactly:
 
 ```sh
 set +e
-make "run-${language}" </dev/null >"$stdout_file" 2>"$stderr_file"
+run_application_entry "$language" </dev/null >"$stdout_file" 2>"$stderr_file"
 status=$?
 set -e
 
 test "$status" -eq 2
 test ! -s "$stdout_file"
-test "$(cat "$stderr_file")" = \
-  "polytui: interactive mode requires a TTY"
+printf '%s\n' 'polytui: interactive mode requires a TTY' >"$expected_file"
+cmp -s "$stderr_file" "$expected_file"
 ```
 
-Then invoke each target with `ARGS="--version"` under the same redirected
-streams, require status `0`, empty `stderr`, and the existing exact
-language-specific version line. Print one final success line.
+Do not call a Make target in this first loop: it validates application output,
+so `stderr` must be exactly the single diagnostic line including its newline.
+
+In a second loop, invoke each public `make --no-print-directory
+run-<language>` target with the same redirected streams. Require status `2`,
+empty `stdout`, and exactly one complete occurrence of the diagnostic on
+`stderr` (for example, `grep -Fxc` must return `1`). Do not require the whole
+`stderr` file to match: Go's `go run` and GNU Make may add wrapper diagnostics.
+
+In a third loop, invoke each public target with `ARGS="--version"` under the
+same redirected streams. Require status `0`, empty `stderr`, and the existing
+exact language-specific version line. This preserves public-target validation
+for the scriptable bypass. Print one final success line only after all twelve
+non-TTY checks pass.
 
 - [ ] **Step 4: Implement the PTY harness**
 
@@ -1111,6 +1148,9 @@ For each of the eight cases:
 
 - open a PTY with `pty.openpty()`;
 - capture `termios.tcgetattr(slave_fd)` before launch;
+- set the actual slave terminal geometry before `Popen` with
+  `fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))`;
+  import `struct` for this `winsize` payload;
 - start the command with all three standard streams attached to `slave_fd`;
 - create a controlling terminal in the child with `os.setsid()` followed by
   `fcntl.ioctl(slave_fd, termios.TIOCSCTTY, 0)`;
@@ -1118,14 +1158,19 @@ For each of the eight cases:
 - read from `master_fd` with `select.select` until normalized output contains
   both expected lines;
 - write the control byte;
-- require process status `0` within five seconds;
+- reap the child with `process.wait(timeout=TIMEOUT_SECONDS)` and require
+  status `0` within five seconds; never use `os.kill(process.pid, 0)` as an
+  exit test because it treats an unreaped zombie as running;
 - drain remaining output;
 - compare the complete `termios.tcgetattr(slave_fd)` value with the original;
 - strip CSI/OSC sequences and require both lines remain in captured output.
 
-On timeout, terminate, wait one second, kill if needed, and include decoded
-captured output in the assertion. Close both PTY file descriptors in `finally`.
-Print `all TUI lifecycle PTY scenarios pass` after all eight cases.
+On timeout, terminate, call `Popen.wait()` for one second, kill if needed, and
+call `Popen.wait()` again to reap it; include decoded captured output in the
+assertion. Close both PTY file descriptors in `finally`. The harness continues
+to launch the public Make commands shown in `CASES`, so all eight scenarios
+exercise the public targets. Print `all TUI lifecycle PTY scenarios pass` only
+after all eight cases pass.
 
 - [ ] **Step 5: Verify shared tests GREEN**
 
@@ -1136,7 +1181,11 @@ make test-tui-non-tty
 make test-tui-lifecycle
 ```
 
-Expected: the non-TTY contract and all eight PTY cases pass.
+Expected: all four direct application entries have exact non-TTY status,
+stdout, and one-line `stderr` behavior; all four public Make targets have the
+same status and empty stdout with the diagnostic exactly once; all four public
+version targets pass; and all eight public-Make PTY cases pass with a real
+80x24 PTY and reaped children.
 
 - [ ] **Step 6: Wire CI and protect the invocation**
 
