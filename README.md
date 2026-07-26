@@ -55,5 +55,20 @@ download the artifact from its **Artifacts** section. Artifacts are retained
 for 30 days. Pull request runs build and test the projects but do not upload
 artifacts.
 
+For Go or Rust, unzip the GitHub artifact and then extract its native archive:
+
+```sh
+tar -xzf polytui-go-macos-ARM64.tar.gz
+./polytui --version
+```
+
+The inner `tar.gz` preserves the executable permission of `polytui`.
+
+M1 artifacts are not signed with an Apple Developer ID and are not notarized.
+If macOS blocks a build that you produced or downloaded from this trusted
+repository, open **System Settings > Privacy & Security** and choose
+**Open Anyway** for `polytui`. Executable permission and Apple notarization are
+separate concerns.
+
 The architecture and approved scope are documented under
 `docs/superpowers/specs/`.
