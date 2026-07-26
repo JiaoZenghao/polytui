@@ -777,7 +777,7 @@ git commit -m "feat(typescript): add polytui CLI entry point"
 Run:
 
 ```bash
-uv init --package --python 3.13 implementations/python
+uv init --package --name polytui --python 3.13 implementations/python
 uv add --project implementations/python "typer==0.27.0"
 uv add --project implementations/python --dev "pytest==9.1.1"
 ```
