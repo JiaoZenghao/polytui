@@ -11,6 +11,7 @@ The long-term product direction is similar to Codex CLI, but the first milestone
 ## Confirmed Decisions
 
 - Use one GitHub monorepo.
+- Name the project and all four executable entry points `polytui`.
 - Keep one independent folder for each language.
 - Develop all four implementations through synchronized vertical milestones.
 - Treat the shared behavior contract as the source of truth.
@@ -78,6 +79,8 @@ cli_tui/
 ```
 
 Each implementation owns its dependencies, source code, tests, build output, and language-specific documentation. Implementations must not import source code from one another.
+
+The local workspace directory may remain `cli_tui`, but the GitHub repository, release name, package identity, and user-facing command are `polytui`.
 
 The `contracts/` directory describes observable behavior, not internal classes, modules, concurrency primitives, or framework APIs.
 
