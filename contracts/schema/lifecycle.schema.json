@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JiaoZenghao/polytui/contracts/schema/lifecycle.schema.json",
+  "title": "PolyTUI interactive lifecycle contract",
+  "type": "object",
+  "required": [
+    "format_version",
+    "banners",
+    "exit_hint",
+    "diagnostics",
+    "exit_codes",
+    "exit_keys",
+    "non_tty_bypass"
+  ],
+  "properties": {
+    "format_version": { "const": 1 },
+    "banners": {
+      "type": "object",
+      "required": ["go", "rust", "typescript", "python"],
+      "properties": {
+        "go": { "const": "PolyTUI · Go" },
+        "rust": { "const": "PolyTUI · Rust" },
+        "typescript": { "const": "PolyTUI · TypeScript" },
+        "python": { "const": "PolyTUI · Python" }
+      },
+      "additionalProperties": false
+    },
+    "exit_hint": { "const": "Press Ctrl+C or Ctrl+D to exit" },
+    "diagnostics": {
+      "type": "object",
+      "required": ["non_tty", "internal"],
+      "properties": {
+        "non_tty": { "const": "polytui: interactive mode requires a TTY" },
+        "internal": { "const": "polytui: interactive mode failed" }
+      },
+      "additionalProperties": false
+    },
+    "exit_codes": {
+      "type": "object",
+      "required": ["success", "internal", "non_tty"],
+      "properties": {
+        "success": { "const": 0 },
+        "internal": { "const": 1 },
+        "non_tty": { "const": 2 }
+      },
+      "additionalProperties": false
+    },
+    "exit_keys": {
+      "type": "array",
+      "prefixItems": [
+        { "const": "ctrl+c" },
+        { "const": "ctrl+d" }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "non_tty_bypass": {
+      "type": "array",
+      "prefixItems": [
+        { "const": "--version" },
+        { "const": "--help" }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "banners": {
+    "go": "PolyTUI · Go",
+    "rust": "PolyTUI · Rust",
+    "typescript": "PolyTUI · TypeScript",
+    "python": "PolyTUI · Python"
+  },
+  "exit_hint": "Press Ctrl+C or Ctrl+D to exit",
+  "diagnostics": {
+    "non_tty": "polytui: interactive mode requires a TTY",
+    "internal": "polytui: interactive mode failed"
+  },
+  "exit_codes": {
+    "success": 0,
+    "internal": 1,
+    "non_tty": 2
+  },
+  "exit_keys": ["ctrl+c", "ctrl+d"],
+  "non_tty_bypass": ["--version", "--help"]
+}
