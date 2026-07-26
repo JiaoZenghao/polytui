@@ -1,5 +1,7 @@
+pub mod app;
 pub mod build_info;
 pub mod cli;
+pub mod tui;
 
 #[cfg(test)]
 mod tests {
