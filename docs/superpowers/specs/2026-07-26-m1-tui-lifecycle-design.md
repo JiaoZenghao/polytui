@@ -230,22 +230,27 @@ binary once into the test's temporary directory, then launch it directly; run
 Rust with `cargo run --quiet --manifest-path implementations/rust/Cargo.toml
 --`, TypeScript with `pnpm --dir implementations/typescript exec tsx
 src/index.ts`, and Python with `uv run --project implementations/python
-polytui`. Do not use Make for these four launches. Each application entry must
-exit `2`, write an empty `stdout`, and write `stderr` consisting of exactly one
-newline-terminated line:
+polytui`. Do not use Make for these four launches.
+
+**Application-entry acceptance (four commands):** each direct application
+entry must exit `2`, write an empty `stdout`, and write `stderr` consisting of
+exactly one newline-terminated line:
 
 ```text
 polytui: interactive mode requires a TTY
 ```
 
-The public-Make boundary separately runs all four `make run-<language>`
-targets without a PTY. It requires status `2`, empty `stdout`, and that the
-shared diagnostic occurs exactly once on `stderr`; additional wrapper output
-from `go run` or GNU Make is permitted. This boundary verifies the public
-targets without incorrectly treating wrapper output as application output.
+**Public-Make acceptance (four targets):** each `make run-<language>` target
+without a PTY must exit `2`, write an empty `stdout`, and contain the complete
+newline-terminated diagnostic line above exactly once on `stderr`. Additional
+wrapper output from `go run` or GNU Make is permitted. This boundary verifies
+the public targets without incorrectly treating wrapper output as application
+output.
 
 Run all four public targets with `ARGS="--version"` in the same non-TTY
-environment and retain the existing successful version checks.
+environment. Each must exit `0`, write an empty `stderr`, and write exactly
+one language-specific version line, `polytui <VERSION> (<language>)`, followed
+by a newline, to `stdout`.
 
 ### macOS PTY Lifecycle Test
 

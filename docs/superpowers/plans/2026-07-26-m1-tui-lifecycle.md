@@ -1118,9 +1118,22 @@ so `stderr` must be exactly the single diagnostic line including its newline.
 
 In a second loop, invoke each public `make --no-print-directory
 run-<language>` target with the same redirected streams. Require status `2`,
-empty `stdout`, and exactly one complete occurrence of the diagnostic on
-`stderr` (for example, `grep -Fxc` must return `1`). Do not require the whole
-`stderr` file to match: Go's `go run` and GNU Make may add wrapper diagnostics.
+empty `stdout`, and exactly one complete newline-terminated diagnostic line on
+`stderr`. Capture `grep`'s count from `stdout` and compare the captured value
+to `1`; `-x` makes the comparison a complete-line match rather than a
+substring match:
+
+```sh
+set +e
+diagnostic_count="$(grep -Fxc 'polytui: interactive mode requires a TTY' "$stderr_file")"
+grep_status=$?
+set -e
+test "$grep_status" -eq 0
+test "$diagnostic_count" -eq 1
+```
+
+Do not require the whole `stderr` file to match: Go's `go run` and GNU Make
+may add wrapper diagnostics.
 
 In a third loop, invoke each public target with `ARGS="--version"` under the
 same redirected streams. Require status `0`, empty `stderr`, and the existing
