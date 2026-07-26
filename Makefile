@@ -1,4 +1,4 @@
-.PHONY: contracts test-go test-rust test-typescript test-python versions test run-go run-rust run-typescript run-python test-run-targets
+.PHONY: contracts test-go test-rust test-typescript test-python versions test ci-artifacts-policy run-go run-rust run-typescript run-python test-run-targets
 
 contracts:
 	./scripts/validate-contracts.sh
@@ -22,6 +22,9 @@ test-python:
 versions:
 	./scripts/check-versions.sh
 
+ci-artifacts-policy:
+	./scripts/validate-ci-artifacts.sh
+
 run-go:
 	@cd implementations/go && go run ./cmd/polytui $(ARGS)
 
@@ -37,4 +40,4 @@ run-python:
 test-run-targets:
 	./scripts/test-run-targets.sh
 
-test: contracts test-go test-rust test-typescript test-python versions test-run-targets
+test: contracts test-go test-rust test-typescript test-python versions ci-artifacts-policy test-run-targets
