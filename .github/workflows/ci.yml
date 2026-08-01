@@ -158,3 +158,5 @@ jobs:
         working-directory: implementations/python
       - run: ./scripts/check-versions.sh
       - run: ./scripts/test-run-targets.sh
+      - run: make test-tui-non-tty
+      - run: make test-tui-lifecycle

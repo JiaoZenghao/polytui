@@ -124,7 +124,26 @@ make_wrong_path() {
 	' "$base_workflow" >"$output"
 }
 
+make_missing_line() {
+	output="$1"
+	target="$2"
+	awk -v target="$target" '$0 != target { print }' \
+		"$base_workflow" >"$output"
+}
+
 expect_accepted baseline "$base_workflow"
+
+make_missing_line "$tmp_dir/missing-tui-non-tty.yml" \
+	"      - run: make test-tui-non-tty"
+expect_rejected missing-tui-non-tty \
+	"$tmp_dir/missing-tui-non-tty.yml" \
+	'blackbox-parity-macos: expected 1 exact line(s) "      - run: make test-tui-non-tty", found 0'
+
+make_missing_line "$tmp_dir/missing-tui-lifecycle.yml" \
+	"      - run: make test-tui-lifecycle"
+expect_rejected missing-tui-lifecycle \
+	"$tmp_dir/missing-tui-lifecycle.yml" \
+	'blackbox-parity-macos: expected 1 exact line(s) "      - run: make test-tui-lifecycle", found 0'
 
 make_named_upload "$tmp_dir/extra-v7.yml" \
 	policy-extra-v7 "Upload extra v7" "actions/upload-artifact@v7"

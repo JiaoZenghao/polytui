@@ -160,6 +160,8 @@ assert_job_line validate-contracts "      - run: ./scripts/validate-ci-artifacts
 assert_job_line validate-contracts "      - run: ./scripts/test-ci-artifacts-policy.sh"
 assert_job_line blackbox-parity-macos "      - run: ./scripts/check-versions.sh"
 assert_job_line blackbox-parity-macos "      - run: ./scripts/test-run-targets.sh"
+assert_job_line blackbox-parity-macos "      - run: make test-tui-non-tty"
+assert_job_line blackbox-parity-macos "      - run: make test-tui-lifecycle"
 
 assert_step_line test-go-macos "Build and verify Go artifact" \
 	'        run: ./scripts/test-native-artifact-archive.sh go "${{ runner.arch }}"'

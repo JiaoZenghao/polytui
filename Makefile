@@ -1,4 +1,4 @@
-.PHONY: contracts test-go test-rust test-typescript test-python versions test ci-artifacts-policy ci-artifacts-policy-regressions run-go run-rust run-typescript run-python test-run-targets
+.PHONY: contracts test-go test-rust test-typescript test-python versions test ci-artifacts-policy ci-artifacts-policy-regressions run-go run-rust run-typescript run-python test-run-targets test-tui-non-tty test-tui-lifecycle
 
 contracts:
 	./scripts/validate-contracts.sh
@@ -43,4 +43,10 @@ run-python:
 test-run-targets:
 	./scripts/test-run-targets.sh
 
-test: contracts test-go test-rust test-typescript test-python versions ci-artifacts-policy ci-artifacts-policy-regressions test-run-targets
+test-tui-non-tty:
+	./scripts/test-tui-non-tty.sh
+
+test-tui-lifecycle:
+	uv run --project implementations/python python scripts/test-tui-lifecycle.py
+
+test: contracts test-go test-rust test-typescript test-python versions ci-artifacts-policy ci-artifacts-policy-regressions test-run-targets test-tui-non-tty test-tui-lifecycle
