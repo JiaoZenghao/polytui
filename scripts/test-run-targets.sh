@@ -29,7 +29,7 @@ check_typescript_startup_structure() {
 
 	expected='pnpm --dir implementations/typescript exec tsc -p tsconfig.json
 node implementations/typescript/dist/index.js --version'
-	actual="$(make --no-print-directory -B -n run-typescript ARGS="--version")"
+	actual="$(make --no-print-directory -n -W implementations/typescript/src/terminal.tsx run-typescript ARGS="--version")"
 
 	if [ "$actual" != "$expected" ]; then
 		printf '%s\nexpected:' "run-typescript forced startup structure mismatch" >&2
