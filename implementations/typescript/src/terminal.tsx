@@ -41,6 +41,7 @@ const renderStartupApp: RenderApp = streams =>
     stdin: streams.stdin as NodeJS.ReadStream,
     stdout: streams.stdout as NodeJS.WriteStream,
     stderr: streams.stderr as NodeJS.WriteStream,
+    interactive: true,
     exitOnCtrlC: false,
     patchConsole: false,
   });

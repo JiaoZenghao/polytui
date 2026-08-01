@@ -34,8 +34,10 @@ run-go:
 run-rust:
 	@cargo run --quiet --manifest-path implementations/rust/Cargo.toml -- $(ARGS)
 
-run-typescript:
+implementations/typescript/dist/index.js: $(wildcard implementations/typescript/src/*.ts) $(wildcard implementations/typescript/src/*.tsx) implementations/typescript/tsconfig.json implementations/typescript/package.json implementations/typescript/pnpm-lock.yaml
 	@pnpm --dir implementations/typescript exec tsc -p tsconfig.json
+
+run-typescript: implementations/typescript/dist/index.js
 	@node implementations/typescript/dist/index.js $(ARGS)
 
 run-python:
@@ -47,7 +49,7 @@ test-run-targets:
 test-tui-non-tty:
 	./scripts/test-tui-non-tty.sh
 
-test-tui-lifecycle:
+test-tui-lifecycle: implementations/typescript/dist/index.js
 	uv run --project implementations/python python scripts/test-tui-lifecycle.py
 
 test: contracts test-go test-rust test-typescript test-python versions ci-artifacts-policy ci-artifacts-policy-regressions test-run-targets test-tui-non-tty test-tui-lifecycle

@@ -38,7 +38,8 @@ make run-python
 ```
 
 The inline TUI requires a real TTY. Press `Ctrl+C` or `Ctrl+D` to exit cleanly.
-`make run-typescript` compiles the TypeScript implementation before starting it.
+`make run-typescript` compiles the TypeScript implementation when its sources or
+build configuration have changed.
 
 For scripts and CI, `--version` and `--help` remain usable without an
 interactive terminal:

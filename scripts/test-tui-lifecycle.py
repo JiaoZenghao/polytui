@@ -339,8 +339,39 @@ def read_until_lines(
         ):
             break
 
+    while True:
+        readable, _, _ = select.select([master_fd], [], [], 0)
+        if not readable or not read_available(
+            master_fd,
+            captured,
+            cursor_position_responder,
+        ):
+            break
+
     output = normalized_output(captured)
     return all(line in output for line in expected_lines)
+
+
+def test_read_until_lines_drains_ready_output_after_deadline() -> None:
+    master_fd, slave_fd = pty.openpty()
+    captured = bytearray()
+    try:
+        os.write(slave_fd, b"already ready banner\r\nalready ready hint\r\n")
+        found = read_until_lines(
+            master_fd,
+            captured,
+            ("already ready banner", "already ready hint"),
+            CursorPositionResponder(),
+            time.monotonic() - 1.0,
+        )
+    finally:
+        os.close(master_fd)
+        os.close(slave_fd)
+
+    if not found:
+        raise AssertionError(
+            "read_until_lines did not drain output ready at the deadline"
+        )
 
 
 def drain_output(
@@ -550,6 +581,7 @@ def run_case(
     environment = os.environ.copy()
     environment.update(
         {
+            "CI": "true",
             "TERM": "xterm-256color",
             "COLUMNS": "80",
             "LINES": "24",
@@ -707,6 +739,7 @@ def run_case(
 def main() -> None:
     test_normalized_output_removes_erased_startup_lines()
     test_normalized_output_emulates_required_vt_operations()
+    test_read_until_lines_drains_ready_output_after_deadline()
     print("ok - terminal output normalizer", flush=True)
 
     for language, (banner, command) in CASES.items():
