@@ -1165,13 +1165,17 @@ EXIT_HINT = "Press Ctrl+C or Ctrl+D to exit"
 For each of the eight cases:
 
 - open a PTY with `pty.openpty()`;
-- capture `termios.tcgetattr(slave_fd)` before launch;
+- capture and normalize the complete `termios.tcgetattr(slave_fd)` value
+  before launch (the first six fields plus every control character as an
+  integer);
 - set the actual slave terminal geometry before `Popen` with
   `fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))`;
   import `struct` for this `winsize` payload;
 - start the command with all three standard streams attached to `slave_fd`;
 - create a controlling terminal in the child with `os.setsid()` followed by
   `fcntl.ioctl(slave_fd, termios.TIOCSCTTY, 0)`;
+- close the parent's duplicate `slave_fd` immediately after `Popen`; this
+  avoids holding the macOS controlling session open;
 - set `TERM=xterm-256color`, `COLUMNS=80`, and `LINES=24`;
 - read from `master_fd` with `select.select` until normalized output contains
   both expected lines;
@@ -1179,16 +1183,19 @@ For each of the eight cases:
 - reap the child with `process.wait(timeout=TIMEOUT_SECONDS)` and require
   status `0` within five seconds; never use `os.kill(process.pid, 0)` as an
   exit test because it treats an unreaped zombie as running;
-- drain remaining output;
-- compare the complete `termios.tcgetattr(slave_fd)` value with the original;
+- drain remaining output with a deadline;
+- while `master_fd` remains open, normalize and compare its complete
+  `termios.tcgetattr(master_fd)` value with the original slave attributes;
 - strip CSI/OSC sequences and require both lines remain in captured output.
 
-On timeout, terminate, call `Popen.wait()` for one second, kill if needed, and
-call `Popen.wait()` again to reap it; include decoded captured output in the
-assertion. Close both PTY file descriptors in `finally`. The harness continues
-to launch the public Make commands shown in `CASES`, so all eight scenarios
-exercise the public targets. Print `all TUI lifecycle PTY scenarios pass` only
-after all eight cases pass.
+On timeout, send `SIGTERM` to process group `Popen.pid`, wait one second while
+continuing bounded PTY drains and cursor-position replies, send `SIGKILL` to
+that group if needed, and require a second bounded `Popen.wait()` to reap the
+top-level child. Raise a cleanup failure if reaping still times out. Close both
+PTY file descriptors in `finally`. The harness continues to launch the public
+Make commands shown in `CASES`, so all eight scenarios exercise the public
+targets. Print `all TUI lifecycle PTY scenarios pass` only after all eight
+cases pass.
 
 - [ ] **Step 5: Verify shared tests GREEN**
 

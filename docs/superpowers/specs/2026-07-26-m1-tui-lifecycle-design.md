@@ -258,20 +258,27 @@ A shared uv-executed Python harness uses the standard-library PTY and terminal
 modules to launch each public Make target. For every language and for both
 exit keys, it:
 
-1. opens a master/slave PTY pair, records the slave attributes, and sets its
-   real window size to `80x24` with `TIOCSWINSZ` before launch;
+1. opens a master/slave PTY pair, records normalized complete slave
+   attributes, and sets its real window size to `80x24` with `TIOCSWINSZ`
+   before launch;
 2. starts the public Make target with the slave attached to all standard
    streams, while also setting `TERM=xterm-256color`, `COLUMNS=80`, and
-   `LINES=24`;
+   `LINES=24`; the parent closes its slave FD immediately after `Popen` so a
+   macOS controlling session cannot be kept alive by that duplicate FD;
 3. waits for the language banner and exit hint;
 4. sends the corresponding control byte;
 5. reaps the child with `Popen.wait()` and requires status `0` (a
    `kill(pid, 0)` liveness probe is not an exit check and must not be used);
-6. compares terminal attributes after exit;
+6. while the master is still open, reads complete terminal attributes from the
+   master, normalizes the first six fields and every control character to
+   integers, and compares them with the pre-launch slave attributes;
 7. normalizes captured output and confirms the startup view remains present.
 
-This produces eight startup-and-exit scenarios. A bounded timeout terminates a
-hung child and reports its captured output.
+This produces eight startup-and-exit scenarios. A bounded timeout sends
+`SIGTERM`, then `SIGKILL` if necessary, to process group `Popen.pid`; each
+bounded reap continues to drain PTY output and satisfy cursor-position
+queries, and cleanup raises explicitly if the top-level child cannot be
+reaped. It then reports captured output for the hung child.
 
 ### CI
 

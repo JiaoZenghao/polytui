@@ -10,6 +10,7 @@ from pathlib import Path
 import pty
 import re
 import select
+import signal
 import struct
 import subprocess
 import termios
@@ -76,6 +77,17 @@ def normalized_output(captured: bytearray) -> str:
         index += 1
 
     return "\n".join("".join(line).rstrip() for line in lines)
+
+
+def normalized_terminal_attributes(attributes: list[object]) -> tuple[int, ...]:
+    control_characters = attributes[6]
+    return (
+        *(int(value) for value in attributes[:6]),
+        *(
+            value[0] if isinstance(value, bytes) else int(value)
+            for value in control_characters
+        ),
+    )
 
 
 class CursorPositionResponder:
@@ -152,10 +164,10 @@ def drain_output(
     master_fd: int,
     captured: bytearray,
     cursor_position_responder: CursorPositionResponder,
-    deadline: float | None = None,
+    deadline: float,
 ) -> None:
     while True:
-        if deadline is not None and time.monotonic() >= deadline:
+        if time.monotonic() >= deadline:
             return
         readable, _, _ = select.select([master_fd], [], [], 0)
         if not readable or not read_available(
@@ -171,9 +183,8 @@ def wait_for_process(
     master_fd: int,
     captured: bytearray,
     cursor_position_responder: CursorPositionResponder,
+    deadline: float,
 ) -> int:
-    deadline = time.monotonic() + TIMEOUT_SECONDS
-
     while True:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -189,24 +200,48 @@ def wait_for_process(
             )
 
 
-def stop_process(process: subprocess.Popen[bytes]) -> None:
-    if process.poll() is not None:
-        return
-
-    process.terminate()
-
+def signal_process_group(
+    process: subprocess.Popen[bytes],
+    signal_number: signal.Signals,
+) -> None:
     try:
-        process.wait(timeout=TERMINATE_TIMEOUT_SECONDS)
+        os.killpg(process.pid, signal_number)
+    except ProcessLookupError:
+        pass
+
+
+def stop_process(
+    process: subprocess.Popen[bytes],
+    master_fd: int,
+    captured: bytearray,
+    cursor_position_responder: CursorPositionResponder,
+) -> None:
+    signal_process_group(process, signal.SIGTERM)
+    try:
+        wait_for_process(
+            process,
+            master_fd,
+            captured,
+            cursor_position_responder,
+            time.monotonic() + TERMINATE_TIMEOUT_SECONDS,
+        )
         return
     except subprocess.TimeoutExpired:
         pass
 
-    process.kill()
-
+    signal_process_group(process, signal.SIGKILL)
     try:
-        process.wait(timeout=TERMINATE_TIMEOUT_SECONDS)
-    except subprocess.TimeoutExpired:
-        pass
+        wait_for_process(
+            process,
+            master_fd,
+            captured,
+            cursor_position_responder,
+            time.monotonic() + TERMINATE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            "process group did not exit after SIGKILL; top-level process was not reaped"
+        ) from error
 
 
 def input_is_raw(slave_name: str) -> bool:
@@ -264,7 +299,7 @@ def run_case(
     master_fd, slave_fd = pty.openpty()
     slave_name = os.ttyname(slave_fd)
     slave_closed = False
-    original_termios = termios.tcgetattr(slave_fd)
+    original_termios = normalized_terminal_attributes(termios.tcgetattr(slave_fd))
     fcntl.ioctl(
         slave_fd,
         termios.TIOCSWINSZ,
@@ -309,8 +344,19 @@ def run_case(
             cursor_position_responder,
             startup_deadline,
         ):
-            stop_process(process)
-            drain_output(master_fd, captured, cursor_position_responder)
+            cleanup_deadline = time.monotonic() + TERMINATE_TIMEOUT_SECONDS
+            stop_process(
+                process,
+                master_fd,
+                captured,
+                cursor_position_responder,
+            )
+            drain_output(
+                master_fd,
+                captured,
+                cursor_position_responder,
+                cleanup_deadline,
+            )
             raise AssertionError(
                 failure_message(
                     label,
@@ -326,8 +372,19 @@ def run_case(
             cursor_position_responder,
             startup_deadline,
         ):
-            stop_process(process)
-            drain_output(master_fd, captured, cursor_position_responder)
+            cleanup_deadline = time.monotonic() + TERMINATE_TIMEOUT_SECONDS
+            stop_process(
+                process,
+                master_fd,
+                captured,
+                cursor_position_responder,
+            )
+            drain_output(
+                master_fd,
+                captured,
+                cursor_position_responder,
+                cleanup_deadline,
+            )
             raise AssertionError(
                 failure_message(
                     label,
@@ -344,10 +401,22 @@ def run_case(
                 master_fd,
                 captured,
                 cursor_position_responder,
+                time.monotonic() + TIMEOUT_SECONDS,
             )
         except subprocess.TimeoutExpired:
-            stop_process(process)
-            drain_output(master_fd, captured, cursor_position_responder)
+            cleanup_deadline = time.monotonic() + TERMINATE_TIMEOUT_SECONDS
+            stop_process(
+                process,
+                master_fd,
+                captured,
+                cursor_position_responder,
+            )
+            drain_output(
+                master_fd,
+                captured,
+                cursor_position_responder,
+                cleanup_deadline,
+            )
             raise AssertionError(
                 failure_message(
                     label,
@@ -356,12 +425,15 @@ def run_case(
                 )
             ) from None
 
-        drain_output(master_fd, captured, cursor_position_responder)
-        reopened_slave_fd = os.open(slave_name, os.O_RDWR | os.O_NOCTTY)
-        try:
-            restored_termios = termios.tcgetattr(reopened_slave_fd)
-        finally:
-            os.close(reopened_slave_fd)
+        drain_output(
+            master_fd,
+            captured,
+            cursor_position_responder,
+            time.monotonic() + TERMINATE_TIMEOUT_SECONDS,
+        )
+        restored_termios = normalized_terminal_attributes(
+            termios.tcgetattr(master_fd)
+        )
         output = normalized_output(captured)
         failures = []
 
@@ -378,11 +450,24 @@ def run_case(
                 failure_message(label, "; ".join(failures), captured)
             )
     finally:
-        if process is not None:
-            stop_process(process)
-        os.close(master_fd)
-        if not slave_closed:
-            os.close(slave_fd)
+        try:
+            if process is not None:
+                stop_process(
+                    process,
+                    master_fd,
+                    captured,
+                    cursor_position_responder,
+                )
+                drain_output(
+                    master_fd,
+                    captured,
+                    cursor_position_responder,
+                    time.monotonic() + TERMINATE_TIMEOUT_SECONDS,
+                )
+        finally:
+            os.close(master_fd)
+            if not slave_closed:
+                os.close(slave_fd)
 
 
 def main() -> None:
