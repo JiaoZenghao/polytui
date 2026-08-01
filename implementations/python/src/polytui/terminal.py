@@ -1,5 +1,7 @@
 import sys
 from collections.abc import Callable
+from contextlib import redirect_stderr
+from io import StringIO
 from typing import TextIO
 
 from polytui.app import PolyTUIApp
@@ -23,12 +25,17 @@ def run_interactive(
         return 2
 
     try:
-        result = app_factory().run(
-            inline=True,
-            inline_no_clear=True,
-            mouse=False,
-        )
-        return int(result or 0)
+        with redirect_stderr(StringIO()):
+            app = app_factory()
+            app.run(
+                inline=True,
+                inline_no_clear=True,
+                mouse=False,
+            )
+        if app.return_code not in (None, 0):
+            stderr.write(f"{INTERNAL_DIAGNOSTIC}\n")
+            return 1
+        return 0
     except Exception:
         stderr.write(f"{INTERNAL_DIAGNOSTIC}\n")
         return 1

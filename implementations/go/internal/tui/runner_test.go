@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -101,7 +102,7 @@ func TestRunnerPassesModelAndTerminalOptions(t *testing.T) {
 				t.Fatal("program model is nil")
 			}
 			const wantView = "PolyTUI · Go\nPress Ctrl+C or Ctrl+D to exit"
-			if gotView := spec.model.View().Content; gotView != wantView {
+			if gotView := strings.TrimSuffix(spec.model.View().Content, "\n"); gotView != wantView {
 				t.Fatalf("program model view = %q, want %q", gotView, wantView)
 			}
 			if gotOptions := len(spec.options); gotOptions != 2 {

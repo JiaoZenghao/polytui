@@ -24,5 +24,5 @@ func (m model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (model) View() tea.View {
-	return tea.NewView(Banner + "\n" + ExitHint)
+	return tea.NewView(Banner + "\n" + ExitHint + "\n")
 }

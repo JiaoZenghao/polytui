@@ -1,13 +1,14 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 )
 
 func TestModelView(t *testing.T) {
-	got := newModel().View().Content
+	got := strings.TrimSuffix(newModel().View().Content, "\n")
 	want := "PolyTUI · Go\nPress Ctrl+C or Ctrl+D to exit"
 	if got != want {
 		t.Fatalf("View() = %q, want %q", got, want)

@@ -2,6 +2,7 @@ from io import StringIO
 
 import pytest
 
+from polytui.app import PolyTUIApp
 from polytui.terminal import run_interactive
 
 
@@ -80,12 +81,48 @@ def test_app_run_failure_returns_internal_diagnostic_only() -> None:
     assert stderr.getvalue() == "polytui: interactive mode failed\n"
 
 
+def test_textual_lifecycle_failure_returns_internal_diagnostic_only(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    stdout = TextStream(is_tty=True)
+    stderr = TextStream(is_tty=True)
+
+    class FailingTextualApp(PolyTUIApp):
+        def on_mount(self) -> None:
+            raise RuntimeError("mount failed")
+
+        def run(self, **kwargs: bool) -> int | None:
+            return super().run(headless=True, **kwargs)
+
+    exit_code = run_interactive(
+        stdin=TextStream(is_tty=True),
+        stdout=stdout,
+        stderr=stderr,
+        app_factory=FailingTextualApp,
+    )
+
+    captured = capsys.readouterr()
+    assert (
+        exit_code,
+        stdout.getvalue(),
+        stderr.getvalue(),
+        captured.err,
+    ) == (
+        1,
+        "",
+        "polytui: interactive mode failed\n",
+        "",
+    )
+
+
 def test_successful_app_uses_inline_terminal_options() -> None:
     stdout = TextStream(is_tty=True)
     stderr = TextStream(is_tty=True)
     options: dict[str, bool] = {}
 
     class SuccessfulApp:
+        return_code = 0
+
         def run(self, **kwargs: bool) -> int:
             options.update(kwargs)
             return 0

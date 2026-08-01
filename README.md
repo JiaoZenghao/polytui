@@ -6,8 +6,8 @@ approach while enforcing one shared behavior contract.
 
 ## Current scope
 
-M1 is macOS-only. The first vertical slice provides shared contract validation,
-four synchronized `polytui --version` entry points, and a minimal
+M1 is macOS-only. The implemented vertical slices provide shared contract
+validation, four synchronized `polytui --version` entry points, and a minimal
 language-specific inline startup TUI. The TUI exits cleanly with `Ctrl+C` or
 `Ctrl+D`; it does not yet provide editing, streaming, or model access.
 
