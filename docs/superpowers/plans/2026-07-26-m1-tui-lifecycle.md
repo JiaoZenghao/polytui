@@ -1188,14 +1188,17 @@ For each of the eight cases:
   `termios.tcgetattr(master_fd)` value with the original slave attributes;
 - strip CSI/OSC sequences and require both lines remain in captured output.
 
-On timeout, send `SIGTERM` to process group `Popen.pid`, wait one second while
-continuing bounded PTY drains and cursor-position replies, send `SIGKILL` to
-that group if needed, and require a second bounded `Popen.wait()` to reap the
-top-level child. Raise a cleanup failure if reaping still times out. Close both
-PTY file descriptors in `finally`. The harness continues to launch the public
-Make commands shown in `CASES`, so all eight scenarios exercise the public
-targets. Print `all TUI lifecycle PTY scenarios pass` only after all eight
-cases pass.
+On timeout, send `SIGTERM` to process group `Popen.pid` and wait one second
+while continuing bounded PTY drains and cursor-position replies. Regardless of
+whether the top-level child has already reaped, use `os.killpg(pgid, 0)` only
+to check whether descendants remain; if they do, send `SIGKILL`, perform any
+remaining bounded `Popen.wait()`, and wait at most one second for the group to
+disappear. Raise a cleanup failure if top-level reaping or group disappearance
+times out. Final cleanup must skip an already-reaped successful target so its
+PID cannot be confused with a reused process group. Close both PTY file
+descriptors in `finally`. The harness continues to launch the public Make
+commands shown in `CASES`, so all eight scenarios exercise the public targets.
+Print `all TUI lifecycle PTY scenarios pass` only after all eight cases pass.
 
 - [ ] **Step 5: Verify shared tests GREEN**
 

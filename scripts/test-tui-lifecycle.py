@@ -210,6 +210,44 @@ def signal_process_group(
         pass
 
 
+def process_group_exists(process: subprocess.Popen[bytes]) -> bool:
+    try:
+        os.killpg(process.pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def wait_for_process_group_exit(
+    process: subprocess.Popen[bytes],
+    master_fd: int,
+    captured: bytearray,
+    cursor_position_responder: CursorPositionResponder,
+    deadline: float,
+) -> None:
+    while process_group_exists(process):
+        if time.monotonic() >= deadline:
+            raise RuntimeError("process group did not exit after SIGKILL")
+
+        drain_output(master_fd, captured, cursor_position_responder, deadline)
+        if not process_group_exists(process):
+            return
+
+        remaining = deadline - time.monotonic()
+        readable, _, _ = select.select(
+            [master_fd],
+            [],
+            [],
+            min(0.05, max(0.0, remaining)),
+        )
+        if readable and not read_available(
+            master_fd,
+            captured,
+            cursor_position_responder,
+        ):
+            select.select([], [], [], min(0.05, max(0.0, remaining)))
+
+
 def stop_process(
     process: subprocess.Popen[bytes],
     master_fd: int,
@@ -217,31 +255,44 @@ def stop_process(
     cursor_position_responder: CursorPositionResponder,
 ) -> None:
     signal_process_group(process, signal.SIGTERM)
-    try:
-        wait_for_process(
-            process,
-            master_fd,
-            captured,
-            cursor_position_responder,
-            time.monotonic() + TERMINATE_TIMEOUT_SECONDS,
-        )
+    if process.poll() is None:
+        try:
+            wait_for_process(
+                process,
+                master_fd,
+                captured,
+                cursor_position_responder,
+                time.monotonic() + TERMINATE_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            pass
+
+    if not process_group_exists(process):
         return
-    except subprocess.TimeoutExpired:
-        pass
 
     signal_process_group(process, signal.SIGKILL)
-    try:
-        wait_for_process(
-            process,
-            master_fd,
-            captured,
-            cursor_position_responder,
-            time.monotonic() + TERMINATE_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired as error:
-        raise RuntimeError(
-            "process group did not exit after SIGKILL; top-level process was not reaped"
-        ) from error
+    cleanup_deadline = time.monotonic() + TERMINATE_TIMEOUT_SECONDS
+    if process.poll() is None:
+        try:
+            wait_for_process(
+                process,
+                master_fd,
+                captured,
+                cursor_position_responder,
+                cleanup_deadline,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError(
+                "process group did not exit after SIGKILL; top-level process was not reaped"
+            ) from error
+
+    wait_for_process_group_exit(
+        process,
+        master_fd,
+        captured,
+        cursor_position_responder,
+        cleanup_deadline,
+    )
 
 
 def input_is_raw(slave_name: str) -> bool:
@@ -451,7 +502,7 @@ def run_case(
             )
     finally:
         try:
-            if process is not None:
+            if process is not None and process.poll() is None:
                 stop_process(
                     process,
                     master_fd,

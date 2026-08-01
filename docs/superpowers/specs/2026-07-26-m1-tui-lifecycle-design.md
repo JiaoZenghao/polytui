@@ -275,10 +275,15 @@ exit keys, it:
 7. normalizes captured output and confirms the startup view remains present.
 
 This produces eight startup-and-exit scenarios. A bounded timeout sends
-`SIGTERM`, then `SIGKILL` if necessary, to process group `Popen.pid`; each
-bounded reap continues to drain PTY output and satisfy cursor-position
-queries, and cleanup raises explicitly if the top-level child cannot be
-reaped. It then reports captured output for the hung child.
+`SIGTERM` to process group `Popen.pid`, then checks that group with
+`os.killpg(pgid, 0)` even if the top-level child has already reaped. If the
+group remains, cleanup sends `SIGKILL`, performs any remaining bounded
+`Popen.wait()`, and waits at most one second for the group to disappear. The
+group probe is only a descendant-cleanup check, never a substitute for reaping
+the top-level child. Each bounded wait continues to drain PTY output and
+satisfy cursor-position queries, and cleanup raises explicitly on unreaped
+children or a surviving group. Successful, already-reaped targets are not
+signalled again during final cleanup.
 
 ### CI
 
