@@ -6,9 +6,10 @@ approach while enforcing one shared behavior contract.
 
 ## Current scope
 
-M1 is macOS-only. The first vertical slice provides shared contract validation
-and four synchronized `polytui --version` entry points. It does not start a TUI
-or call a model.
+M1 is macOS-only. The first vertical slice provides shared contract validation,
+four synchronized `polytui --version` entry points, and a minimal
+language-specific inline startup TUI. The TUI exits cleanly with `Ctrl+C` or
+`Ctrl+D`; it does not yet provide editing, streaming, or model access.
 
 ## Prerequisites
 
@@ -27,6 +28,20 @@ make test
 
 ## Run each implementation
 
+To start each implementation's interactive startup view, use a real terminal:
+
+```sh
+make run-go
+make run-rust
+make run-typescript
+make run-python
+```
+
+The inline TUI requires a real TTY. Press `Ctrl+C` or `Ctrl+D` to exit cleanly.
+
+For scripts and CI, `--version` and `--help` remain usable without an
+interactive terminal:
+
 ```sh
 make run-go ARGS="--version"
 make run-rust ARGS="--version"
@@ -34,8 +49,7 @@ make run-typescript ARGS="--version"
 make run-python ARGS="--version"
 ```
 
-Omit `ARGS` to run the CLI without arguments. Before the first TypeScript run,
-install its locked dependencies with:
+Before the first TypeScript run, install its locked dependencies with:
 
 ```sh
 pnpm --dir implementations/typescript install --frozen-lockfile
