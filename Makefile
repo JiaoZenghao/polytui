@@ -35,7 +35,8 @@ run-rust:
 	@cargo run --quiet --manifest-path implementations/rust/Cargo.toml -- $(ARGS)
 
 run-typescript:
-	@pnpm --dir implementations/typescript exec tsx src/index.ts $(ARGS)
+	@pnpm --dir implementations/typescript exec tsc -p tsconfig.json
+	@node implementations/typescript/dist/index.js $(ARGS)
 
 run-python:
 	@uv run --project implementations/python polytui $(ARGS)
